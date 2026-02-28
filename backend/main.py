@@ -8,9 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.agents.manager import run_structurai
-from google.genai.errors import ClientError
+from google.genai.errors import ClientError  # Gemini error handling
 
 app = FastAPI(title="StructurAI Studio")
+
 
 # -----------------------------
 # CORS (Safe for Vercel)
@@ -22,6 +23,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # -----------------------------
 # Allow iframe embedding
@@ -57,7 +59,7 @@ def generate_ui(req: PromptRequest):
     try:
         result = run_structurai(req.prompt)
 
-        # Normalize response
+        # Normalize return format
         if isinstance(result, dict):
             preview_url = result.get("preview_url") or result.get("url")
         else:
@@ -69,6 +71,7 @@ def generate_ui(req: PromptRequest):
                 "detail": "run_structurai did not return expected format"
             }
 
+        # Ensure correct static path
         if not preview_url.startswith("/generated_projects"):
             preview_url = f"/generated_projects/{preview_url}"
 
@@ -76,20 +79,22 @@ def generate_ui(req: PromptRequest):
 
     # Proper Gemini quota handling
     except ClientError as e:
-        if e.status_code == 429:
+        error_text = str(e)
+
+        if "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
             return {
                 "error": "Gemini quota exceeded",
                 "detail": "Daily free quota reached. Please try again tomorrow or upgrade your plan."
             }
-        else:
-            return {
-                "error": "Gemini API error",
-                "detail": str(e)
-            }
+
+        return {
+            "error": "Gemini API error",
+            "detail": error_text
+        }
 
     # Generic fallback
     except Exception as e:
-        print("🔥 ERROR IN generate_ui:")
+        print("ERROR IN generate_ui:")
         traceback.print_exc()
         return {
             "error": "Internal server error",
