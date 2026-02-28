@@ -7,51 +7,71 @@ function App() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [history, setHistory] = useState([]);
 
-  // Pointing to your finalized Render backend URL
   const BACKEND_URL = "https://structurai.onrender.com";
 
+  // ✅ FIXED generate() FUNCTION
   const generate = async () => {
-    if (!prompt) return;
+    if (!prompt.trim()) return;
+
     setLoading(true);
+
     try {
-      // Calling the POST /generate-ui route defined in main.py
+      // Add timeout protection (important for Render cold start)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds
+
       const res = await fetch(`${BACKEND_URL}/generate-ui`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
+        signal: controller.signal
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Server error: ${res.status}`);
+
+      clearTimeout(timeoutId);
+
+      // Safely parse JSON
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error("Invalid JSON response from server");
       }
-      
-      const data = await res.json();
-      
-      /** * Path Fix: 
-       * Your backend returns a relative path like "/generated_projects/abc.html".
-       * We prefix it with BACKEND_URL so the iframe points to Render, not localhost.
-       */
-      const relativePath = data.preview_url || data.url; 
-      const fullPreviewUrl = relativePath.startsWith("http") 
-        ? relativePath 
-        : `${BACKEND_URL}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
+
+      if (!res.ok || data.error) {
+        throw new Error(data.detail || data.error || `Server error: ${res.status}`);
+      }
+
+      const relativePath = data.preview_url || data.url;
+
+      if (!relativePath || typeof relativePath !== "string") {
+        throw new Error("Backend did not return a valid preview URL");
+      }
+
+      const fullPreviewUrl = relativePath.startsWith("http")
+        ? relativePath
+        : `${BACKEND_URL}${relativePath.startsWith("/") ? "" : "/"}${relativePath}`;
 
       setPreview(fullPreviewUrl);
       setHasGenerated(true);
-      
+
       const newVersion = {
         id: Date.now(),
         prompt: prompt,
         url: fullPreviewUrl,
         version: history.length + 1
       };
+
       setHistory([newVersion, ...history]);
-      
+
     } catch (err) {
       console.error("Design generation failed:", err);
-      // Alerting user in case Render is still waking up from a "Cold Start"
-      alert("Backend is waking up or error occurred. Please try again in 30 seconds.");
+
+      if (err.name === "AbortError") {
+        alert("Server is waking up (Render cold start). Please wait 30–60 seconds and try again.");
+      } else {
+        alert("Backend error occurred. Please check Render logs.");
+      }
+
     } finally {
       setLoading(false);
     }
@@ -62,7 +82,7 @@ function App() {
     setPreview(item.url);
   };
 
-  // Hero Section (Initial State)
+  // Hero Section
   if (!hasGenerated) {
     return (
       <div style={styles.heroPage}>
@@ -85,7 +105,7 @@ function App() {
     );
   }
 
-  // Workspace Section (After Generation)
+  // Workspace Section
   return (
     <div style={styles.workspace}>
       <aside style={styles.editorSidebar}>
@@ -138,7 +158,6 @@ function App() {
           </div>
         </div>
         <div style={styles.iframeContainer}>
-          {/* Iframe loads static file from Render */}
           <iframe 
             src={preview} 
             style={styles.iframe} 
@@ -151,7 +170,7 @@ function App() {
   );
 }
 
-// Keeping your original high-fidelity styles
+// Your original styles untouched
 const styles = {
   heroPage: { minHeight: "100vh", background: "#020617", display: "flex", justifyContent: "center", alignItems: "center", color: "white", fontFamily: "Inter, sans-serif" },
   heroContent: { textAlign: "center", width: "100%", maxWidth: "700px", padding: "20px" },
