@@ -42,8 +42,11 @@ def home():
 # 4. CORE AI GENERATION ROUTE
 @app.post("/generate-ui")
 def generate_ui(req: PromptRequest):
-    # This calls your AI agents (Manager, Requirement, Renderer)
-    return run_structurai(req.prompt)
+    try:
+        return run_structurai(req.prompt)
+    except Exception as e:
+        # This will return the actual error message to your browser console
+        return {"error": str(e), "detail": "Check Render logs for full traceback"}
 
 # 5. STATIC STORAGE SETUP
 # Mounts the 'generated_projects' folder so the iframe can load the .html files.
