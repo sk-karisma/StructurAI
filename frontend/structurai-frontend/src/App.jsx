@@ -7,27 +7,35 @@ function App() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [history, setHistory] = useState([]);
 
-  // UPDATE: Pointing to your live Render backend
+  // Pointing to your finalized Render backend URL
   const BACKEND_URL = "https://structurai.onrender.com";
 
   const generate = async () => {
     if (!prompt) return;
     setLoading(true);
     try {
+      // Calling the POST /generate-ui route defined in main.py
       const res = await fetch(`${BACKEND_URL}/generate-ui`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
       
-      if (!res.ok) throw new Error("Server responded with an error");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Server error: ${res.status}`);
+      }
       
       const data = await res.json();
       
-      // Ensure the URL is absolute by combining backend URL if needed
-      const fullPreviewUrl = data.preview_url.startsWith("http") 
-        ? data.preview_url 
-        : `${BACKEND_URL}${data.preview_url}`;
+      /** * Path Fix: 
+       * Your backend returns a relative path like "/generated_projects/abc.html".
+       * We prefix it with BACKEND_URL so the iframe points to Render, not localhost.
+       */
+      const relativePath = data.preview_url || data.url; 
+      const fullPreviewUrl = relativePath.startsWith("http") 
+        ? relativePath 
+        : `${BACKEND_URL}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
 
       setPreview(fullPreviewUrl);
       setHasGenerated(true);
@@ -42,7 +50,8 @@ function App() {
       
     } catch (err) {
       console.error("Design generation failed:", err);
-      alert("Failed to generate UI. Please check if the backend is awake!");
+      // Alerting user in case Render is still waking up from a "Cold Start"
+      alert("Backend is waking up or error occurred. Please try again in 30 seconds.");
     } finally {
       setLoading(false);
     }
@@ -53,6 +62,7 @@ function App() {
     setPreview(item.url);
   };
 
+  // Hero Section (Initial State)
   if (!hasGenerated) {
     return (
       <div style={styles.heroPage}>
@@ -75,6 +85,7 @@ function App() {
     );
   }
 
+  // Workspace Section (After Generation)
   return (
     <div style={styles.workspace}>
       <aside style={styles.editorSidebar}>
@@ -122,12 +133,12 @@ function App() {
         <div style={styles.previewHeader}>
           <div style={styles.versionChip}>Live Preview</div>
           <div style={styles.actions}>
-             <button style={styles.secondaryBtn}>View Code</button>
+             <button style={styles.secondaryBtn} onClick={() => window.open(preview, '_blank')}>Open Fullscreen</button>
              <button style={styles.publishBtn}>Publish</button>
           </div>
         </div>
         <div style={styles.iframeContainer}>
-          {/* Added sandbox for security and allow-same-origin for CSS loading */}
+          {/* Iframe loads static file from Render */}
           <iframe 
             src={preview} 
             style={styles.iframe} 
@@ -140,6 +151,7 @@ function App() {
   );
 }
 
+// Keeping your original high-fidelity styles
 const styles = {
   heroPage: { minHeight: "100vh", background: "#020617", display: "flex", justifyContent: "center", alignItems: "center", color: "white", fontFamily: "Inter, sans-serif" },
   heroContent: { textAlign: "center", width: "100%", maxWidth: "700px", padding: "20px" },
