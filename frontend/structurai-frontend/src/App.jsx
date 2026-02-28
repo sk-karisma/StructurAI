@@ -5,34 +5,44 @@ function App() {
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
-  // NEW: Version History State
   const [history, setHistory] = useState([]);
+
+  // UPDATE: Pointing to your live Render backend
+  const BACKEND_URL = "https://structurai.onrender.com";
 
   const generate = async () => {
     if (!prompt) return;
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/generate-ui", {
+      const res = await fetch(`${BACKEND_URL}/generate-ui`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+      
+      if (!res.ok) throw new Error("Server responded with an error");
+      
       const data = await res.json();
       
-      setPreview(data.preview_url);
+      // Ensure the URL is absolute by combining backend URL if needed
+      const fullPreviewUrl = data.preview_url.startsWith("http") 
+        ? data.preview_url 
+        : `${BACKEND_URL}${data.preview_url}`;
+
+      setPreview(fullPreviewUrl);
       setHasGenerated(true);
       
-      // Add new generation to history
       const newVersion = {
         id: Date.now(),
         prompt: prompt,
-        url: data.preview_url,
+        url: fullPreviewUrl,
         version: history.length + 1
       };
       setHistory([newVersion, ...history]);
       
     } catch (err) {
       console.error("Design generation failed:", err);
+      alert("Failed to generate UI. Please check if the backend is awake!");
     } finally {
       setLoading(false);
     }
@@ -88,7 +98,6 @@ function App() {
           </button>
         </div>
 
-        {/* NEW: Version History Section */}
         <div style={styles.historySection}>
           <h3 style={styles.historyTitle}>Version History</h3>
           <div style={styles.historyList}>
@@ -118,7 +127,13 @@ function App() {
           </div>
         </div>
         <div style={styles.iframeContainer}>
-          <iframe src={preview} style={styles.iframe} title="preview" />
+          {/* Added sandbox for security and allow-same-origin for CSS loading */}
+          <iframe 
+            src={preview} 
+            style={styles.iframe} 
+            title="preview" 
+            sandbox="allow-scripts allow-same-origin"
+          />
         </div>
       </main>
     </div>
@@ -126,7 +141,6 @@ function App() {
 }
 
 const styles = {
-  // ... (previous heroPage, heroContent, etc. styles remain the same)
   heroPage: { minHeight: "100vh", background: "#020617", display: "flex", justifyContent: "center", alignItems: "center", color: "white", fontFamily: "Inter, sans-serif" },
   heroContent: { textAlign: "center", width: "100%", maxWidth: "700px", padding: "20px" },
   heroTitle: { fontSize: "4.5rem", fontWeight: "900", margin: 0, letterSpacing: "-2px" },
@@ -135,7 +149,6 @@ const styles = {
   heroCard: { background: "rgba(255,255,255,0.03)", padding: "30px", borderRadius: "28px", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" },
   heroTextarea: { width: "100%", height: "140px", background: "transparent", border: "none", color: "white", fontSize: "1.2rem", outline: "none", resize: "none" },
   mainButton: { width: "100%", padding: "18px", borderRadius: "16px", background: "#3b82f6", color: "white", fontWeight: "700", border: "none", cursor: "pointer", marginTop: "20px", fontSize: "1.1rem" },
-
   workspace: { display: "flex", height: "100vh", background: "#0a0a0a", color: "white", fontFamily: "Inter, sans-serif" },
   editorSidebar: { width: "380px", borderRight: "1px solid #222", padding: "24px", display: "flex", flexDirection: "column", background: "#0d0d0d" },
   sidebarHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" },
@@ -146,15 +159,12 @@ const styles = {
   chatArea: { height: "250px", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "30px" },
   sidebarTextarea: { flex: 1, background: "#111", border: "1px solid #333", borderRadius: "16px", padding: "15px", color: "white", resize: "none", outline: "none", fontSize: "14px" },
   updateButton: { padding: "12px", background: "#3b82f6", borderRadius: "12px", border: "none", color: "white", fontWeight: "700", cursor: "pointer" },
-  
-  // History Styles
   historySection: { flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" },
   historyTitle: { fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "#444", marginBottom: "15px", letterSpacing: "1px" },
   historyList: { display: "flex", flexDirection: "column", gap: "10px" },
   historyItem: { padding: "12px", background: "#111", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s" },
   versionLabel: { fontSize: "10px", fontWeight: "800", color: "#3b82f6", marginBottom: "4px" },
   versionPrompt: { fontSize: "12px", color: "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-
   previewArea: { flex: 1, display: "flex", flexDirection: "column", background: "#f1f5f9" },
   previewHeader: { padding: "12px 24px", background: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" },
   versionChip: { background: "#f1f5f9", color: "#64748b", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600" },
