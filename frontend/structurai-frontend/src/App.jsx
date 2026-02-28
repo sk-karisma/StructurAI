@@ -132,7 +132,7 @@ function App() {
             src={preview} 
             style={styles.iframe} 
             title="preview" 
-            sandbox="allow-scripts allow-same-origin"
+            // sandbox="allow-scripts allow-same-origin"
           />
         </div>
       </main>
