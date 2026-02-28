@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.agents.manager import run_structurai
+from google.genai.errors import ClientError  # ✅ Proper Gemini error import
 
 app = FastAPI(title="StructurAI Studio")
 
@@ -40,7 +41,7 @@ class PromptRequest(BaseModel):
 # Health Check
 # -----------------------------
 @app.get("/")
-def home():  # ← sync is fine here
+def home():
     return {
         "status": "online",
         "message": "StructurAI Studio Backend is live 🚀",
@@ -49,7 +50,7 @@ def home():  # ← sync is fine here
 
 
 # -----------------------------
-# Core Generation Route (SYNC VERSION)
+# Core Generation Route (SYNC)
 # -----------------------------
 @app.post("/generate-ui")
 def generate_ui(req: PromptRequest):
@@ -68,18 +69,31 @@ def generate_ui(req: PromptRequest):
                 "detail": "run_structurai did not return expected format"
             }
 
-        # Ensure correct static path
         if not preview_url.startswith("/generated_projects"):
             preview_url = f"/generated_projects/{preview_url}"
 
         return {"preview_url": preview_url}
 
+    # ✅ Proper Gemini quota handling
+    except ClientError as e:
+        if e.status_code == 429:
+            return {
+                "error": "Gemini quota exceeded",
+                "detail": "Daily free quota reached. Please try again tomorrow or upgrade your plan."
+            }
+        else:
+            return {
+                "error": "Gemini API error",
+                "detail": str(e)
+            }
+
+    # Generic fallback
     except Exception as e:
         print("🔥 ERROR IN generate_ui:")
         traceback.print_exc()
         return {
-            "error": str(e),
-            "detail": "Check Render logs for full traceback"
+            "error": "Internal server error",
+            "detail": str(e)
         }
 
 
