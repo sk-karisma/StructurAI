@@ -5,25 +5,22 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from backend.agents.manager import run_structurai
 
-app = FastAPI(title="StructurAI")
+app = FastAPI(title="StructurAI Studio")
 
 # 1. IFRAME PERMISSIONS MIDDLEWARE
-# This prevents the "blank screen" by allowing the UI to load in your React iframe
+# Allows the generated HTML to render inside the React Workspace
 @app.middleware("http")
 async def add_frame_options_header(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "ALLOWALL"
     return response
 
-# 2. UPDATED CORS SETTINGS
-# Added your specific Vercel URL from the error log to fix the 'Origin not allowed' issue
+# 2. EMERGENCY CORS FIX
+# Using "*" allows ALL origins (Vercel, Localhost, etc.) to talk to this API.
+# This fixes the "Origin not allowed" error seen in your console logs.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://structur-ai.vercel.app",
-        "https://structur-l52itkt8g-sk-karismas-projects.vercel.app"
-    ],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,23 +29,30 @@ app.add_middleware(
 class PromptRequest(BaseModel):
     prompt: str
 
+# 3. HEALTH CHECK ROUTE
+# Visit https://structurai.onrender.com/ to see if this returns successfully.
 @app.get("/")
 def home():
-    return {"message": "StructurAI Studio is live 🚀"}
+    return {
+        "status": "online",
+        "message": "StructurAI Studio Backend is live 🚀",
+        "environment": os.getenv("RENDER", "local")
+    }
 
+# 4. CORE AI GENERATION ROUTE
 @app.post("/generate-ui")
 def generate_ui(req: PromptRequest):
-    # This calls your AI agent logic
+    # This calls your AI agents (Manager, Requirement, Renderer)
     return run_structurai(req.prompt)
 
-# 3. STATIC FILE SERVING
-# Ensures the folder exists and is accessible via URL
+# 5. STATIC STORAGE SETUP
+# Mounts the 'generated_projects' folder so the iframe can load the .html files.
 os.makedirs("generated_projects", exist_ok=True)
 app.mount("/generated_projects", StaticFiles(directory="generated_projects"), name="generated_projects")
 
-# 4. RENDER DYNAMIC PORT
+# 6. DYNAMIC PORT FOR RENDER
 if __name__ == "__main__":
     import uvicorn
-    # Render assigns a port dynamically via the PORT environment variable
+    # Render assigns a port via the PORT environment variable (defaulting to 10000)
     port = int(os.getenv("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
