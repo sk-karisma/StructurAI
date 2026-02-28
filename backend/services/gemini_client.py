@@ -1,22 +1,26 @@
+import os
 from google import genai
-from backend.config import GEMINI_API_KEY
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in environment variables")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
-
 
 def generate_json(prompt: str):
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
     )
-
     return response.text
-
 
 def generate_text(prompt: str):
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
     )
-
     return response.text
