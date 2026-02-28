@@ -2,7 +2,7 @@
 
 Transform thoughts into interfaces instantly.
 
-StructurAI Studio is an AI-powered full-stack application that converts natural language prompts into modern, styled UI layouts with live preview and PDF export.
+Multi-Agent LLM-Orchestrated UI Generation System with Validation & Rendering Pipeline
 
 ---
 
@@ -144,3 +144,4 @@ This architecture provides:
 - Save to database instead of filesystem
 - Multi-theme generation
 - AI layout refinement agent
+
