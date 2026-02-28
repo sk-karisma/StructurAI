@@ -10,12 +10,11 @@ def run_structurai(prompt: str):
 
     html_filename = generate_html(structured)
     local_html_path = os.path.join("generated_projects", html_filename)
-    
-    # Generate PDF using local file path
+
+    # Generate PDF
     pdf_path = html_to_pdf(local_html_path)
 
-    # Construct Public URL for Frontend Iframe
-    preview_url = f"http://127.0.0.1:8000/generated_projects/{html_filename}"
+    preview_url = f"/generated_projects/{html_filename}"
 
     return {
         "structure": structured,
