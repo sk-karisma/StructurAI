@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.agents.manager import run_structurai
-from google.genai.errors import ClientError  # ✅ Proper Gemini error import
+from google.genai.errors import ClientError
 
 app = FastAPI(title="StructurAI Studio")
 
@@ -74,7 +74,7 @@ def generate_ui(req: PromptRequest):
 
         return {"preview_url": preview_url}
 
-    # ✅ Proper Gemini quota handling
+    # Proper Gemini quota handling
     except ClientError as e:
         if e.status_code == 429:
             return {
