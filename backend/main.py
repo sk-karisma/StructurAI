@@ -40,7 +40,7 @@ class PromptRequest(BaseModel):
 # Health Check
 # -----------------------------
 @app.get("/")
-async def home():
+def home():  # ← sync is fine here
     return {
         "status": "online",
         "message": "StructurAI Studio Backend is live 🚀",
@@ -49,14 +49,14 @@ async def home():
 
 
 # -----------------------------
-# Core Generation Route
+# Core Generation Route (SYNC VERSION)
 # -----------------------------
 @app.post("/generate-ui")
-async def generate_ui(req: PromptRequest):
+def generate_ui(req: PromptRequest):
     try:
         result = run_structurai(req.prompt)
 
-        # Ensure consistent response format
+        # Normalize response
         if isinstance(result, dict):
             preview_url = result.get("preview_url") or result.get("url")
         else:
@@ -68,7 +68,7 @@ async def generate_ui(req: PromptRequest):
                 "detail": "run_structurai did not return expected format"
             }
 
-        # Ensure path format starts correctly
+        # Ensure correct static path
         if not preview_url.startswith("/generated_projects"):
             preview_url = f"/generated_projects/{preview_url}"
 
@@ -87,6 +87,7 @@ async def generate_ui(req: PromptRequest):
 # Static Folder
 # -----------------------------
 os.makedirs("generated_projects", exist_ok=True)
+
 app.mount(
     "/generated_projects",
     StaticFiles(directory="generated_projects"),
